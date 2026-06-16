@@ -1,0 +1,10 @@
+fastf1
+requests
+pandas
+numpy
+scikit-learn
+streamlit
+plotly
+sqlalchemy
+pytest
+python-dotenv
