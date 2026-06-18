@@ -63,6 +63,35 @@ def save_to_csv(df: pd.DataFrame, filename: str) -> Path:
     return output_path
 
 
+def load_full_season(year: int) -> None:
+    """Load race lap data for every round of a season and save each to CSV.
+
+    Args:
+        year: Season year, e.g. 2023.
+    """
+    schedule = fastf1.get_event_schedule(year, include_testing=False)
+    rounds = schedule[schedule["EventFormat"] != "testing"]
+
+    for _, event in rounds.iterrows():
+        round_num = int(event["RoundNumber"])
+        gp_name: str = event["EventName"]
+        slug = gp_name.lower().replace(" ", "_")
+        filename = f"{year}_r{round_num:02d}_{slug}_race_laps.csv"
+        output_path = PROCESSED_DIR / filename
+
+        if output_path.exists():
+            print(f"[{round_num:02d}/{len(rounds)}] {gp_name} — already saved, skipping")
+            continue
+
+        print(f"[{round_num:02d}/{len(rounds)}] Loading {gp_name} ...", end=" ", flush=True)
+        try:
+            laps_df = load_session(year, round_num, "R")
+            save_to_csv(laps_df, filename)
+            print(f"saved {len(laps_df)} laps -> {filename}")
+        except Exception as exc:
+            print(f"ERROR — {exc}")
+
+
 if __name__ == "__main__":
     laps_df = load_session(2023, "British Grand Prix", "R")
     print(laps_df.head(5))
