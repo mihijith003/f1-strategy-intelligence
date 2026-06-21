@@ -20,32 +20,34 @@ from ingestion.database import save_to_db  # noqa: E402
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 
 
-def _parse_filename(path: Path) -> tuple[str, int | None]:
-    """Extract GrandPrix label and Round number from a CSV filename.
+def _parse_filename(path: Path) -> tuple[str, int | None, int | None]:
+    """Extract GrandPrix label, Round number, and Season year from a CSV filename.
 
-    Expected pattern: 2023_r<NN>_<name>_race_laps.csv
+    Expected pattern: <YYYY>_r<NN>_<name>_race_laps.csv
     Falls back gracefully if no round number is present.
 
     Args:
         path: Path to the CSV file.
 
     Returns:
-        Tuple of (grand_prix_name, round_number_or_None).
+        Tuple of (grand_prix_name, round_number_or_None, season_year_or_None).
     """
     stem = path.stem  # e.g. 2023_r01_bahrain_grand_prix_race_laps
-    match = re.match(r"^\d{4}_r(\d+)_(.+?)_race_laps$", stem)
+    match = re.match(r"^(\d{4})_r(\d+)_(.+?)_race_laps$", stem)
     if match:
-        round_num = int(match.group(1))
-        raw_name = match.group(2).replace("_", " ").title()
-        return raw_name, round_num
+        season = int(match.group(1))
+        round_num = int(match.group(2))
+        raw_name = match.group(3).replace("_", " ").title()
+        return raw_name, round_num, season
 
     # Fallback: no round number in filename
-    fallback_match = re.match(r"^\d{4}_(.+?)_race_laps$", stem)
+    fallback_match = re.match(r"^(\d{4})_(.+?)_race_laps$", stem)
     if fallback_match:
-        raw_name = fallback_match.group(1).replace("_", " ").title()
-        return raw_name, None
+        season = int(fallback_match.group(1))
+        raw_name = fallback_match.group(2).replace("_", " ").title()
+        return raw_name, None, season
 
-    return stem, None
+    return stem, None, None
 
 
 def _laptime_to_seconds(series: pd.Series) -> pd.Series:
@@ -75,18 +77,21 @@ def _laptime_to_seconds(series: pd.Series) -> pd.Series:
 
 
 def load_and_tag(path: Path) -> pd.DataFrame:
-    """Load a single race CSV and add GrandPrix and Round columns.
+    """Load a single race CSV and add Season, GrandPrix, and Round columns.
 
     Args:
         path: Path to the CSV file.
 
     Returns:
-        DataFrame with GrandPrix and Round columns prepended.
+        DataFrame with Season, GrandPrix, and Round columns prepended.
     """
     df = pd.read_csv(path)
-    grand_prix, round_num = _parse_filename(path)
-    df.insert(0, "GrandPrix", grand_prix)
-    df.insert(1, "Round", round_num)
+    grand_prix, round_num, season = _parse_filename(path)
+    # Drop any Season column baked into the CSV so the filename-derived value is authoritative
+    df = df.drop(columns=["Season"], errors="ignore")
+    df.insert(0, "Season", season)
+    df.insert(1, "GrandPrix", grand_prix)
+    df.insert(2, "Round", round_num)
     return df
 
 
@@ -135,6 +140,9 @@ def print_summary(df: pd.DataFrame) -> None:
     print("Consolidation summary")
     print("=" * 50)
     print(f"Total rows      : {len(df):,}")
+    if "Season" in df.columns:
+        for season, count in df.groupby("Season").size().items():
+            print(f"  Season {season}    : {count:,} rows")
     print(f"Unique drivers  : {df['Driver'].nunique()}")
     print(f"Unique races    : {df['GrandPrix'].nunique()}")
 

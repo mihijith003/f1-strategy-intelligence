@@ -69,8 +69,12 @@ def load_full_season(year: int) -> None:
     Args:
         year: Season year, e.g. 2023.
     """
+    import logging
+
     schedule = fastf1.get_event_schedule(year, include_testing=False)
     rounds = schedule[schedule["EventFormat"] != "testing"]
+    total = len(rounds)
+    succeeded = 0
 
     for _, event in rounds.iterrows():
         round_num = int(event["RoundNumber"])
@@ -80,20 +84,29 @@ def load_full_season(year: int) -> None:
         output_path = PROCESSED_DIR / filename
 
         if output_path.exists():
-            print(f"[{round_num:02d}/{len(rounds)}] {gp_name} — already saved, skipping")
+            print(f"[{round_num:02d}/{total}] {gp_name} — already saved, skipping")
+            succeeded += 1
             continue
 
-        print(f"[{round_num:02d}/{len(rounds)}] Loading {gp_name} ...", end=" ", flush=True)
+        print(f"[{round_num:02d}/{total}] Loading {gp_name} ...", end=" ", flush=True)
         try:
             laps_df = load_session(year, round_num, "R")
+            laps_df["Season"] = year
             save_to_csv(laps_df, filename)
             print(f"saved {len(laps_df)} laps -> {filename}")
+            succeeded += 1
         except Exception as exc:
+            logging.error("Failed to fetch %s round %d: %s", gp_name, round_num, exc)
             print(f"ERROR — {exc}")
+
+    print(f"\nCompleted {succeeded}/{total} races")
 
 
 if __name__ == "__main__":
-    laps_df = load_session(2023, "British Grand Prix", "R")
-    print(laps_df.head(5))
-    saved_path = save_to_csv(laps_df, "2023_british_gp_race_laps.csv")
-    print(f"Saved to {saved_path}")
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Fetch F1 race lap data for a given season.")
+    parser.add_argument("--year", type=int, default=2023, help="Season year (default: 2023)")
+    args = parser.parse_args()
+
+    load_full_season(args.year)

@@ -38,8 +38,8 @@ def detect_pit_stops(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame with a new boolean `pitted` column.
     """
-    df = df.copy().sort_values(["Driver", "Round", "LapNumber"])
-    prev_tyre_life = df.groupby(["Driver", "Round"])["TyreLife"].shift(1)
+    df = df.copy().sort_values(["Season", "Driver", "Round", "LapNumber"])
+    prev_tyre_life = df.groupby(["Season", "Driver", "Round"])["TyreLife"].shift(1)
     # A pit stop occurred when TyreLife drops relative to the previous lap
     # (out-laps are excluded from the DB so TyreLife resets to ~2, not 0/1)
     df["pitted"] = df["TyreLife"] < prev_tyre_life
@@ -70,7 +70,7 @@ def add_will_pit_next_n(df: pd.DataFrame, n: int = PIT_WINDOW) -> pd.DataFrame:
         return pd.Series(labels, index=group.index)
 
     df["will_pit_next_5_laps"] = (
-        df.groupby(["Driver", "Round"], group_keys=False)
+        df.groupby(["Season", "Driver", "Round"], group_keys=False)
         .apply(_label_group, include_groups=False)
     )
     return df
@@ -101,7 +101,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     le = LabelEncoder()
     df["Compound_encoded"] = le.fit_transform(df["Compound"].fillna("UNKNOWN"))
 
-    total_laps = df.groupby(["Driver", "Round"])["LapNumber"].transform("max")
+    total_laps = df.groupby(["Season", "Driver", "Round"])["LapNumber"].transform("max")
     df["LapsRemaining"] = total_laps - df["LapNumber"]
 
     df = df.rename(columns={"lap_time_delta": "NormalisedLapTime"})

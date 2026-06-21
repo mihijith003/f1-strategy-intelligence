@@ -56,7 +56,7 @@ def add_lap_time_delta(df: pd.DataFrame) -> pd.DataFrame:
     """
     df = df.copy()
     baseline = (
-        df.groupby(["Driver", "Round"])["LapTime"]
+        df.groupby(["Season", "Driver", "Round"])["LapTime"]
         .transform("median")
     )
     df["lap_time_delta"] = df["LapTime"] - baseline
