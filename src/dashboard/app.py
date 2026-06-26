@@ -187,7 +187,10 @@ def load_session_positions(season: int, round_num: int) -> pd.DataFrame:
     FastF1 reads from data/raw/ (the local disk cache) and does NOT
     re-download anything.
     """
-    fastf1.Cache.enable_cache(str(Path("data/raw")))
+    #fastf1.Cache.enable_cache(str(Path("data/raw")))
+    cache_path = Path("data/raw")
+    cache_path.mkdir(parents=True, exist_ok=True)
+    fastf1.Cache.enable_cache(str(cache_path))
     session = fastf1.get_session(int(season), int(round_num), "R")
     # Load only lap data — skipping telemetry/weather keeps startup fast
     session.load(laps=True, telemetry=False, weather=False, messages=False)
