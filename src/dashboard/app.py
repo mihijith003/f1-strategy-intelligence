@@ -582,6 +582,7 @@ elif page == "Position Chart":
     selected_round = int(race_index.loc[race_index["GrandPrix"] == selected_gp, "Round"].iloc[0])
 
     # Load positions from FastF1 cache (cached after first call)
+    st.info("⏱ First load for each race downloads data from FastF1 — may take 30–60 seconds. Subsequent loads are instant.")
     with st.spinner(f"Loading {selected_gp} {selected_season} from local cache…"):
         pos_df = load_session_positions(selected_season, selected_round)
 

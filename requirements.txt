@@ -9,3 +9,5 @@ sqlalchemy
 pytest
 python-dotenv
 groq
+joblib
+
